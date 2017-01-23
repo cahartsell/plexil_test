@@ -69,7 +69,7 @@ void TestInterface::executeCommand(Command *cmd)
   args = cmd->getArgValues();
   debugMsg("TestInterface:Command", args[0]);
 
-  // PLEXIL Executive BLOCKS until the following command acknowledgement is sent
+  // PLEXIL pends on command acknowledgement (does not block - concurrent portions can continue)
   m_execInterface.handleCommandAck(cmd, COMMAND_SENT_TO_SYSTEM);
 }
 

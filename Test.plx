@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PlexilPlan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xmlns:tr="extended-plexil-translator"
-            FileName="/home/charles/work/plexil-4.0.1/examples/basic/Test/Test.ple">
+            FileName="/home/charles/plexil-4.0.1/examples/basic/plexil_test/Test.ple">
    <GlobalDeclarations LineNo="2" ColNo="0">
       <CommandDeclaration LineNo="2" ColNo="0">
          <Name>debugMsg</Name>
@@ -11,9 +11,16 @@
          </Parameter>
       </CommandDeclaration>
    </GlobalDeclarations>
-   <Node NodeType="NodeList" epx="Sequence" LineNo="6" ColNo="2">
+   <Node NodeType="NodeList" epx="Concurrence" LineNo="4" ColNo="6">
       <NodeId>Main</NodeId>
       <VariableDeclarations>
+         <DeclareVariable LineNo="5" ColNo="2">
+            <Name>bar</Name>
+            <Type>Integer</Type>
+            <InitialValue>
+               <IntegerValue>0</IntegerValue>
+            </InitialValue>
+         </DeclareVariable>
          <DeclareArray LineNo="5" ColNo="2">
             <Name>foo</Name>
             <Type>Integer</Type>
@@ -33,24 +40,6 @@
             </InitialValue>
          </DeclareVariable>
       </VariableDeclarations>
-      <InvariantCondition>
-         <NOT>
-            <AND>
-               <EQInternal>
-                  <NodeOutcomeVariable>
-                     <NodeRef dir="child">while__0</NodeRef>
-                  </NodeOutcomeVariable>
-                  <NodeOutcomeValue>FAILURE</NodeOutcomeValue>
-               </EQInternal>
-               <EQInternal>
-                  <NodeStateVariable>
-                     <NodeRef dir="child">while__0</NodeRef>
-                  </NodeStateVariable>
-                  <NodeStateValue>FINISHED</NodeStateValue>
-               </EQInternal>
-            </AND>
-         </NOT>
-      </InvariantCondition>
       <NodeBody>
          <NodeList>
             <Node NodeType="NodeList" epx="While" LineNo="8" ColNo="2">
@@ -291,6 +280,68 @@
                                  </NodeBody>
                               </Node>
                            </NodeList>
+                        </NodeBody>
+                     </Node>
+                  </NodeList>
+               </NodeBody>
+            </Node>
+            <Node NodeType="NodeList" epx="While" LineNo="19" ColNo="2">
+               <NodeId>while__6</NodeId>
+               <RepeatCondition>
+                  <EQInternal>
+                     <NodeOutcomeVariable>
+                        <NodeRef dir="child">ep2cp_WhileTest</NodeRef>
+                     </NodeOutcomeVariable>
+                     <NodeOutcomeValue>SUCCESS</NodeOutcomeValue>
+                  </EQInternal>
+               </RepeatCondition>
+               <NodeBody>
+                  <NodeList>
+                     <Node NodeType="Empty" epx="Condition">
+                        <NodeId>ep2cp_WhileTest</NodeId>
+                        <PostCondition>
+                           <GT>
+                              <RealVariable>temp</RealVariable>
+                              <RealValue>-5.0</RealValue>
+                           </GT>
+                        </PostCondition>
+                     </Node>
+                     <Node NodeType="Assignment" epx="Action" LineNo="21" ColNo="4">
+                        <NodeId>ASSIGNMENT__8</NodeId>
+                        <StartCondition>
+                           <EQInternal>
+                              <NodeOutcomeVariable>
+                                 <NodeRef dir="sibling">ep2cp_WhileTest</NodeRef>
+                              </NodeOutcomeVariable>
+                              <NodeOutcomeValue>SUCCESS</NodeOutcomeValue>
+                           </EQInternal>
+                        </StartCondition>
+                        <SkipCondition>
+                           <AND>
+                              <EQInternal>
+                                 <NodeStateVariable>
+                                    <NodeRef dir="sibling">ep2cp_WhileTest</NodeRef>
+                                 </NodeStateVariable>
+                                 <NodeStateValue>FINISHED</NodeStateValue>
+                              </EQInternal>
+                              <EQInternal>
+                                 <NodeFailureVariable>
+                                    <NodeRef dir="sibling">ep2cp_WhileTest</NodeRef>
+                                 </NodeFailureVariable>
+                                 <NodeFailureValue>POST_CONDITION_FAILED</NodeFailureValue>
+                              </EQInternal>
+                           </AND>
+                        </SkipCondition>
+                        <NodeBody>
+                           <Assignment>
+                              <IntegerVariable>bar</IntegerVariable>
+                              <NumericRHS>
+                                 <SUB LineNo="21" ColNo="14">
+                                    <IntegerVariable>bar</IntegerVariable>
+                                    <IntegerValue>1</IntegerValue>
+                                 </SUB>
+                              </NumericRHS>
+                           </Assignment>
                         </NodeBody>
                      </Node>
                   </NodeList>

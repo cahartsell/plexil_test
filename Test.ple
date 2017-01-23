@@ -1,8 +1,8 @@
 Command debugMsg( String msg );
 
-Main:
+Main: Concurrence
 {
-  Integer foo[4] = #(0 0 0 0);
+  Integer foo[4] = #(0 0 0 0), bar = 0;
   Real temp = 0.0;
   while (temp < 3.0)
   {
@@ -13,5 +13,10 @@ Main:
       foo[2] = foo[2] + 2;
       debugMsg("test");
     }
+  }
+
+  while (temp > -5.0)
+  {
+    bar = bar - 1;
   }
 }
