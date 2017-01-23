@@ -1,17 +1,20 @@
 Command debugMsg( String msg );
+Command driveToNextWaypoint();
 
-Main:
+Real Lookup at_waypoint
+
+Main: Concurrence
 {
-  Integer foo[4] = #(0 0 0 0);
-  Real temp = 0.0;
-  while (temp < 3.0)
+  Boolean drive_done = false;
+
+  DriveToWaypoint:
   {
-    IncreaseTemp: { temp = temp + 1; }
-    ArrayAssignment:
-    {
-      foo[1] = foo[1] + 1;
-      foo[2] = foo[2] + 2;
-      debugMsg("test");
-    }
+    RepeatCondition Lookup(at_waypoint) = true;
+    ExitCondition drive_done = true;
+    driveToNextWaypoint();
   }
+
+  Bumper Triggered
+  Tilt sensor Triggered
+  Drive to charging Dock
 }
