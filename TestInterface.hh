@@ -8,7 +8,7 @@
 #pragma once
 
 #include <iostream>
-#include <string>
+#include <ctime>
 
 #include "Command.hh"
 #include "InterfaceAdapter.hh"
@@ -30,10 +30,15 @@ public:
   virtual void invokeAbort(Command *cmd);
 
   virtual void executeCommand(Command *cmd);
-  // virtual void lookupNow (State const& state, StateCacheEntry &entry);
+  virtual void lookupNow (State const& state, StateCacheEntry &entry);
   // virtual void subscribe(const State& state);
   // virtual void unsubscribe(const State& state);
   // void propagateValueChange (const State&, const std::vector<Value>&) const;
+
+protected:
+  bool at_waypoint;
+  int current_waypoint;
+  std::time_t start_time;
 };
 
 extern "C" {

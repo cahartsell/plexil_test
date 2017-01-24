@@ -1,3 +1,4 @@
+
 /*
  * Basic PLEXIL Interface Adapter
  * Intended for testing detailed semantics of PLEXIL interfacing
@@ -15,7 +16,17 @@
 #include "Expression.hh"
 #include "StateCacheEntry.hh"
 
-#include <iostream>
+#include <string>
+
+#define DRIVE_TIME 5 //seconds
+
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::map;
+using std::string;
+using std::vector;
+using std::copy;
 
 static TestInterface *Adapter;
 
@@ -23,12 +34,16 @@ TestInterface::TestInterface(AdapterExecInterface& execInterface, const pugi::xm
   : InterfaceAdapter(execInterface, configXml)
 {
   debugMsg("TestInterface", " created.");
+
 }
 
 bool TestInterface::initialize()
 {
   g_configuration->defaultRegisterAdapter(this);
   Adapter = this;
+  Adapter->at_waypoint = false;
+  Adapter->current_waypoint = 0;
+  Adapter->start_time = std::time(NULL);
   debugMsg("TestInterface", " initialized.");
   return true;
 }
@@ -63,14 +78,53 @@ void TestInterface::invokeAbort(Command *cmd)
 
 void TestInterface::executeCommand(Command *cmd)
 {
-  debugMsg("TestInterface:Command"," executing command.");
+  const string &name = cmd->getName();
+  debugMsg("TestInterface:Command"," executing command " << name);
 
   std::vector<Value> args;
   args = cmd->getArgValues();
-  debugMsg("TestInterface:Command", args[0]);
 
-  // PLEXIL Executive BLOCKS until the following command acknowledgement is sent
+  // Storage for argument variables
+  string s;
+  int32_t i;
+  double d;
+  
+  if (name == "debugMsg"){
+    args[0].getValue(s);
+    debugMsg("TestInterface:Command", s);
+  }
+  else if (name == "driveToNextWaypoint"){
+    Adapter->start_time = std::time(NULL);
+    debugMsg("TestInterface:Command", "Driving to waypoint");
+  }
+  else{
+    debugMsg("TestInterface:Command", "Unknown command: " << name);
+  }
+
+  // PLEXIL Executive does not block waiting for acknowledgement. However, sequential plan steps pend
   m_execInterface.handleCommandAck(cmd, COMMAND_SENT_TO_SYSTEM);
+}
+
+void TestInterface::lookupNow(State const &state, StateCacheEntry &entry)
+{
+  string const &name = state.name();
+  const vector<Value> &args = state.parameters();
+  Value retval;
+
+  if (name == "at_waypoint"){
+    // Very basic driving model. Assumes a constant time to drive from waypoint to waypoint.
+    if ((std::time(NULL) - Adapter->start_time) > DRIVE_TIME){
+      retval = true;
+    }
+  }
+  else{
+    // Should return "Unknown"
+    retval = false;
+    debugMsg("TestInterface:Command", "Unknown lookup variable: " << name);
+  }
+
+  // Return result to PLEXIL
+  entry.update(retval);
 }
 
 // Necessary boilerplate

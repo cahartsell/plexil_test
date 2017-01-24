@@ -14,7 +14,7 @@ Main: Concurrence
     driveToNextWaypoint();
   }
 
-  Bumper Triggered
-  Tilt sensor Triggered
-  Drive to charging Dock
+//  Bumper Triggered
+//  Tilt sensor Triggered
+//  Drive to charging Dock
 }
