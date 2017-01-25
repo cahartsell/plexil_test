@@ -31,14 +31,15 @@ public:
 
   virtual void executeCommand(Command *cmd);
   virtual void lookupNow (State const& state, StateCacheEntry &entry);
-  // virtual void subscribe(const State& state);
-  // virtual void unsubscribe(const State& state);
-  // void propagateValueChange (const State&, const std::vector<Value>&) const;
+  virtual void subscribe(const State& state);
+  virtual void unsubscribe(const State& state);
+  void propagateValueChange (const State&, const std::vector<Value>&) const;
 
 protected:
   bool at_waypoint;
   int current_waypoint;
   std::time_t start_time;
+  std::set<State> subscribedStates;
 };
 
 extern "C" {

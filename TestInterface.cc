@@ -30,18 +30,32 @@ using std::copy;
 
 static TestInterface *Adapter;
 
+static vector<Value> const EmptyArgs;
+
+static State createState (const string& state_name, const vector<Value>& value)
+{
+  State state(state_name, value.size());
+  if (value.size() > 0)
+  {
+    for(size_t i=0; i<value.size();i++)
+    {
+      state.setParameter(i, value[i]);
+    }
+  }
+  return state;
+}
+
 TestInterface::TestInterface(AdapterExecInterface& execInterface, const pugi::xml_node& configXml)
   : InterfaceAdapter(execInterface, configXml)
 {
   debugMsg("TestInterface", " created.");
-
 }
 
 bool TestInterface::initialize()
 {
   g_configuration->defaultRegisterAdapter(this);
   Adapter = this;
-  Adapter->at_waypoint = false;
+  Adapter->at_waypoint = true;
   Adapter->current_waypoint = 0;
   Adapter->start_time = std::time(NULL);
   debugMsg("TestInterface", " initialized.");
@@ -79,7 +93,7 @@ void TestInterface::invokeAbort(Command *cmd)
 void TestInterface::executeCommand(Command *cmd)
 {
   const string &name = cmd->getName();
-  debugMsg("TestInterface:Command"," executing command " << name);
+  debugMsg("TestInterface:Command"," executing command: " << name);
 
   std::vector<Value> args;
   args = cmd->getArgValues();
@@ -88,6 +102,7 @@ void TestInterface::executeCommand(Command *cmd)
   string s;
   int32_t i;
   double d;
+  State st;
   
   if (name == "debugMsg"){
     args[0].getValue(s);
@@ -95,7 +110,18 @@ void TestInterface::executeCommand(Command *cmd)
   }
   else if (name == "driveToNextWaypoint"){
     Adapter->start_time = std::time(NULL);
-    debugMsg("TestInterface:Command", "Driving to waypoint");
+    at_waypoint = false;
+  }
+  else if (name =="update"){
+    // Driving to waypoint takes fixed amount of time
+    if ((std::time(NULL) - Adapter->start_time) > DRIVE_TIME){
+      if(at_waypoint == false){
+	debugMsg("TestInterface:Command", "Updating at_waypoint");
+	at_waypoint = true;
+	st = createState("at_waypoint", EmptyArgs);
+	Adapter->propagateValueChange (st, vector<Value> (1, at_waypoint));
+      }
+    }
   }
   else{
     debugMsg("TestInterface:Command", "Unknown command: " << name);
@@ -108,49 +134,44 @@ void TestInterface::executeCommand(Command *cmd)
 void TestInterface::lookupNow(State const &state, StateCacheEntry &entry)
 {
   string const &name = state.name();
+  debugMsg("TestInterface:Lookup", "Received Lookup request for " << name);
   const vector<Value> &args = state.parameters();
   Value retval;
 
   if (name == "at_waypoint"){
-    // Very basic driving model. Assumes a constant time to drive from waypoint to waypoint.
-    if ((std::time(NULL) - Adapter->start_time) > DRIVE_TIME){
-      retval = true;
-    }
+    retval = at_waypoint;
   }
   else{
-    // Should return "Unknown"
-    retval = false;
-    debugMsg("TestInterface:Command", "Unknown lookup variable: " << name);
+    debugMsg("TestInterface:Lookup", "Unknown lookup variable: " << name);
+    entry.setUnknown();
+    return;
   }
 
   // Return result to PLEXIL
   entry.update(retval);
 }
 
-// Necessary boilerplate
+void TestInterface::subscribe(const State &state)
+{
+  debugMsg("TestInterface:subscribe", " subscribing to state: " << state.name());
+  subscribedStates.insert(state);
+}
+
+void TestInterface::unsubscribe(const State &state)
+{
+  debugMsg("TestInterface:unsubscribe", " unsubscribing from state: " << state.name());
+  subscribedStates.erase(state);
+}
+
+void TestInterface::propagateValueChange(const State &state, const vector<Value> &value) const
+{
+  m_execInterface.handleValueChange(state, value.front());
+  m_execInterface.notifyOfExternalEvent();
+}
+
+// Required function
 extern "C" {
   void initTestInterface() {
     REGISTER_ADAPTER(TestInterface, "TestInterface");
   }
 }
-
-/*
-class TestInterface : public InterfaceAdapter
-{
-public:
-  TestInterface (AdapterExecInterface&, const pugi::xml_node&);
-
-  virtual bool initialize();
-  virtual bool start();
-  virtual bool stop();
-  virtual bool reset();
-  virtual bool shutdown();
-  virtual bool invokeAbort(Command *cmd);
-
-  virtual void executeCommand(Command *cmd);
-  virtual void lookupNow (State const& state, StateCacheEntry &entry);
-  virtual void subscribe(const State& state);
-  virtual void unsubscribe(const State& state);
-  void propagateValueChange (const State&, const std::vector<Value>&) const;
-};
-*/

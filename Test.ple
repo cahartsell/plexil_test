@@ -1,7 +1,8 @@
 Command debugMsg( String msg );
 Command driveToNextWaypoint();
+Command update();
 
-Real Lookup at_waypoint
+Boolean Lookup at_waypoint;
 
 Main: Concurrence
 {
@@ -9,9 +10,15 @@ Main: Concurrence
 
   DriveToWaypoint:
   {
-    RepeatCondition Lookup(at_waypoint) = true;
-    ExitCondition drive_done = true;
+    RepeatCondition drive_done == false;
+    StartCondition Lookup(at_waypoint) == true;
     driveToNextWaypoint();
+  }
+
+  UpdateLoop:
+  {
+    RepeatCondition true;
+    update();
   }
 
 //  Bumper Triggered
