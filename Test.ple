@@ -1,22 +1,61 @@
 Command debugMsg( String msg );
+Command driveToNextWaypoint();
+Command reverseAndTurn();
+Command dock();
+Command update();
+
+Boolean Lookup at_waypoint;
+Boolean Lookup tilt_sensor;
+Boolean Lookup bump_sensor;
+Integer Lookup current_waypoint;
 
 Main: Concurrence
 {
-  Integer foo[4] = #(0 0 0 0), bar = 0;
-  Real temp = 0.0;
-  while (temp < 3.0)
+  Boolean drive_done = false;
+  Integer num_waypoints = 3;
+  
+  EndCondition drive_done == true;
+
+  DriveToWaypoint:
   {
-    IncreaseTemp: { temp = temp + 1; }
-    ArrayAssignment:
-    {
-      foo[1] = foo[1] + 1;
-      foo[2] = foo[2] + 2;
-      debugMsg("test");
-    }
+    RepeatCondition Lookup(current_waypoint) < num_waypoints;
+    InvariantCondition Lookup(tilt_sensor) == false;
+    EndCondition Lookup(at_waypoint) == true;
+    driveToNextWaypoint();
   }
 
-  while (temp > -5.0)
+  TiltSensor:
   {
-    bar = bar - 1;
+    RepeatCondition drive_done == false;
+    StartCondition Lookup(tilt_sensor) == true;
+    reverseAndTurn();
+  }
+
+  BumpSensor:
+  {
+    RepeatCondition drive_done == false;
+    StartCondition Lookup(bump_sensor) == true;
+    reverseAndTurn();
+  }
+
+  DriveToDock:
+  {
+    StartCondition Lookup(current_waypoint) >= num_waypoints;
+    StartDock:
+    {
+      EndCondition StartDock.command_handle == COMMAND_SUCCESS;
+      dock();
+    }
+    debugMsg( "MISSION COMPLETE" );
+    drive_done = true;
+  }
+
+
+// Function to force external interface to update
+// Necessary due to lack of external application
+  UpdateLoop:
+  {
+    RepeatCondition drive_done == false;
+    update();
   }
 }

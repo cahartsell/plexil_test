@@ -1,2 +1,6 @@
 #Don't track autosave files
 *~
+
+#Don't track anything that starts with '#' or '.#'
+/#*
+.#*
