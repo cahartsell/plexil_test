@@ -17,8 +17,13 @@
 #include "StateCacheEntry.hh"
 
 #include <string>
+#include <cstdlib>
+#include <cmath>
 
 #define DRIVE_TIME 5 //seconds
+#define TILT_SENSOR_PROB 0.005
+#define BUMP_SENSOR_PROB 0.01
+#define DOCKING_TIME 10 //seconds
 
 using std::cout;
 using std::cerr;
@@ -55,9 +60,15 @@ bool TestInterface::initialize()
 {
   g_configuration->defaultRegisterAdapter(this);
   Adapter = this;
-  Adapter->at_waypoint = true;
-  Adapter->current_waypoint = 0;
-  Adapter->start_time = std::time(NULL);
+  at_waypoint = true;
+  tilt_sensor = false;
+  drive_stopped = false;
+  bump_sensor = false;
+  current_waypoint = 0;
+  start_time = std::time(NULL);
+  dock_start_time = std::time(NULL);
+  docking_started = false;
+  std::srand( std::time(NULL) );
   debugMsg("TestInterface", " initialized.");
   return true;
 }
@@ -88,19 +99,34 @@ bool TestInterface::shutdown()
 
 void TestInterface::invokeAbort(Command *cmd)
 {
+  const string &name = cmd->getName();
+  debugMsg("TestInterface:Command", "Aborting command: " << name);
+  bool retval;
+
+  if (name == "driveToNextWaypoint"){
+    // Imaginary braking function to stop robot in place
+    drive_stopped = true;
+    retval = true;
+  }
+  else{
+    debugMsg("TestInterface:Command", "Abort failed. Unknown command: " << name);
+    retval = false;
+  }
+
+  cmd->acknowledgeAbort(retval);
 }
 
 void TestInterface::executeCommand(Command *cmd)
 {
   const string &name = cmd->getName();
-  debugMsg("TestInterface:Command"," executing command: " << name);
+  debugMsg("TestInterface:Command","executing command: " << name);
 
   std::vector<Value> args;
   args = cmd->getArgValues();
 
   // Storage for argument variables
   string s;
-  int32_t i;
+  int32_t i, rand_mod;
   double d;
   State st;
   
@@ -109,22 +135,63 @@ void TestInterface::executeCommand(Command *cmd)
     debugMsg("TestInterface:Command", s);
   }
   else if (name == "driveToNextWaypoint"){
-    Adapter->start_time = std::time(NULL);
+    start_time = std::time(NULL);
     at_waypoint = false;
   }
   else if (name =="update"){
     // Driving to waypoint takes fixed amount of time
-    if ((std::time(NULL) - Adapter->start_time) > DRIVE_TIME){
-      if(at_waypoint == false){
-	debugMsg("TestInterface:Command", "Updating at_waypoint");
+    if ((std::time(NULL) - start_time) > DRIVE_TIME){
+      if(at_waypoint == false && drive_stopped == false){
+	debugMsg("TestInterface:Update", "Updating at_waypoint");
 	at_waypoint = true;
+	current_waypoint++;
 	st = createState("at_waypoint", EmptyArgs);
-	Adapter->propagateValueChange (st, vector<Value> (1, at_waypoint));
+	Adapter->propagateValueChange(st, vector<Value> (1, at_waypoint));
+	st = createState("current_waypoint", EmptyArgs);
+	Adapter->propagateValueChange(st, vector<Value> (1, current_waypoint));
+      }
+    }
+
+    // Very basic random probabilty of tilt_sensor or bump_sensor tripping
+    rand_mod = (int)(round( 1/TILT_SENSOR_PROB ));
+    i = rand() % rand_mod;
+    if( i == 0 ){
+      tilt_sensor = true;
+      st = createState("tilt_sensor", EmptyArgs);
+      Adapter->propagateValueChange(st, vector<Value> (1, tilt_sensor));
+    }
+    rand_mod = (int)(round( 1/BUMP_SENSOR_PROB ));
+    i = rand() % rand_mod;
+    if( i == 0 ){
+      bump_sensor = true;
+      st = createState("bump_sensor", EmptyArgs);
+      Adapter->propagateValueChange(st, vector<Value> (1, bump_sensor));
+    }
+
+    // Driving to dock and docking takes fixed amount of time
+    if(docking_started){
+      if((std::time(NULL) - dock_start_time) > DOCKING_TIME){
+	debugMsg("TestInterface:Update", "Docking complete. Sending command success message.");
+	m_execInterface.handleCommandAck(dock_cmd, COMMAND_SUCCESS);
       }
     }
   }
+  else if (name == "reverseAndTurn"){
+    // Imaginary function to reverse robot away from obstace and turn to new path
+    drive_stopped = false;
+    tilt_sensor = false;
+    bump_sensor = false;
+    start_time = std::time(NULL);
+    st = createState("tilt_sensor", EmptyArgs);
+    Adapter->propagateValueChange(st, vector<Value> (1, tilt_sensor));
+  }
+  else if (name == "dock"){
+    dock_start_time = std::time(NULL);
+    docking_started = true;
+    dock_cmd = cmd;
+  }
   else{
-    debugMsg("TestInterface:Command", "Unknown command: " << name);
+    debugMsg("TestInterface:Command", "Command failed. Unknown command: " << name);
   }
 
   // PLEXIL Executive does not block waiting for acknowledgement. However, sequential plan steps pend
@@ -141,8 +208,17 @@ void TestInterface::lookupNow(State const &state, StateCacheEntry &entry)
   if (name == "at_waypoint"){
     retval = at_waypoint;
   }
+  else if (name == "current_waypoint"){
+    retval = current_waypoint;
+  }
+  else if (name == "tilt_sensor"){
+    retval = tilt_sensor;
+  }
+  else if (name == "bump_sensor"){
+    retval = bump_sensor;
+  }
   else{
-    debugMsg("TestInterface:Lookup", "Unknown lookup variable: " << name);
+    debugMsg("TestInterface:Lookup", "LookupNow Failed. Unknown lookup variable: " << name);
     entry.setUnknown();
     return;
   }

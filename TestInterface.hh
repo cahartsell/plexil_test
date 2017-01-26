@@ -36,9 +36,10 @@ public:
   void propagateValueChange (const State&, const std::vector<Value>&) const;
 
 protected:
-  bool at_waypoint;
+  bool at_waypoint, tilt_sensor, drive_stopped, bump_sensor, docking_started;
   int current_waypoint;
-  std::time_t start_time;
+  Command *dock_cmd;
+  std::time_t start_time, dock_start_time;
   std::set<State> subscribedStates;
 };
 
