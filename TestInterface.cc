@@ -194,7 +194,8 @@ void TestInterface::executeCommand(Command *cmd)
     debugMsg("TestInterface:Command", "Command failed. Unknown command: " << name);
   }
 
-  // PLEXIL Executive does not block waiting for acknowledgement. However, sequential plan steps pend
+
+  // PLEXIL pends on command acknowledgement (does not block - concurrent portions can continue)
   m_execInterface.handleCommandAck(cmd, COMMAND_SENT_TO_SYSTEM);
 }
 
