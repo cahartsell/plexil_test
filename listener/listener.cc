@@ -44,7 +44,7 @@ int main(int _argc, char **_argv)
 
   // Construct publisher
   gazebo::transport::PublisherPtr velCmdPub = node->Advertise<gazebo::msgs::Pose>("~/create/vel_cmd");
-  //velCmdPub->WaitForConnection();
+  velCmdPub->WaitForConnection();
   
   // Listen to Gazebo topics
   gazebo::transport::SubscriberPtr wall_sensor_sub = node->Subscribe("~/create/base/wall_sensor/scan", cb);
@@ -67,14 +67,18 @@ int main(int _argc, char **_argv)
   cmdMsg.set_force(0.1);
   */
 
-  ignition::math::Pose3<double> pose(100,0,0,0,0,0);
+  ignition::math::Pose3<double> pose1(1,0,0,0,0,10);
+  ignition::math::Pose3<double> pose2(0,0,0,0,0,0);
   gazebo::msgs::Pose msg;
-  gazebo::msgs::Set(&msg, pose);
 
   // Busy wait loop...replace with your own code as needed.
   while (true){
-    gazebo::common::Time::MSleep(100);
+    gazebo::msgs::Set(&msg, pose1);
     velCmdPub->Publish( msg );
+    gazebo::common::Time::MSleep(1000);
+    gazebo::msgs::Set(&msg, pose2);
+    velCmdPub->Publish( msg );
+    gazebo::common::Time::MSleep(1000);
   }
 
   // Make sure to shut everything down.
