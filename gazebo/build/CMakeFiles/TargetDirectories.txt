@@ -1,3 +1,0 @@
-/home/charles/plexil-4.0.1/examples/basic/plexil_test/listener/build/CMakeFiles/rebuild_cache.dir
-/home/charles/plexil-4.0.1/examples/basic/plexil_test/listener/build/CMakeFiles/edit_cache.dir
-/home/charles/plexil-4.0.1/examples/basic/plexil_test/listener/build/CMakeFiles/listener.dir
