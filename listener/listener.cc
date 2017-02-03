@@ -18,6 +18,7 @@
 #include <gazebo/transport/transport.hh>
 #include <gazebo/msgs/msgs.hh>
 #include <gazebo/gazebo_client.hh>
+#include <ignition/math/Pose3.hh>
 
 #include <iostream>
 
@@ -42,8 +43,8 @@ int main(int _argc, char **_argv)
   node->Init();
 
   // Construct publisher
-  gazebo::transport::PublisherPtr left_wheel_pub = node->Advertise<gazebo::msgs::JointCmd>("~/create/joint_cmd");
-  left_wheel_pub->WaitForConnection();
+  gazebo::transport::PublisherPtr velCmdPub = node->Advertise<gazebo::msgs::Pose>("~/create/vel_cmd");
+  //velCmdPub->WaitForConnection();
   
   // Listen to Gazebo topics
   gazebo::transport::SubscriberPtr wall_sensor_sub = node->Subscribe("~/create/base/wall_sensor/scan", cb);
@@ -60,14 +61,20 @@ int main(int _argc, char **_argv)
   wrenchMsg.set_allocated_torque( &wheelTorqueMsg );
   */
 
+  /*
   gazebo::msgs::JointCmd cmdMsg;
   cmdMsg.set_name("create::left_wheel");
   cmdMsg.set_force(0.1);
+  */
+
+  ignition::math::Pose3<double> pose(1,0,0,0,0,0);
+  gazebo::msgs::Pose msg;
+  gazebo::msgs::Set(&msg, pose);
 
   // Busy wait loop...replace with your own code as needed.
   while (true){
     gazebo::common::Time::MSleep(100);
-    left_wheel_pub->Publish( cmdMsg );
+    velCmdPub->Publish( msg );
   }
 
   // Make sure to shut everything down.
