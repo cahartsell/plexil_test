@@ -67,7 +67,7 @@ int main(int _argc, char **_argv)
   cmdMsg.set_force(0.1);
   */
 
-  ignition::math::Pose3<double> pose(1,0,0,0,0,0);
+  ignition::math::Pose3<double> pose(100,0,0,0,0,0);
   gazebo::msgs::Pose msg;
   gazebo::msgs::Set(&msg, pose);
 
