@@ -37,7 +37,7 @@ public:
 
 protected:
   bool at_waypoint, tilt_sensor, drive_stopped, bump_sensor, docking_started;
-  int current_waypoint;
+  int current_waypoint, socket_fd;
   Command *dock_cmd;
   std::time_t start_time, dock_start_time;
   std::set<State> subscribedStates;

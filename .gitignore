@@ -4,3 +4,6 @@
 #Don't track anything that starts with '#' or '.#'
 /#*
 .#*
+
+#Don't track build folders
+build/
