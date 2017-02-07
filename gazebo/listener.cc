@@ -46,7 +46,7 @@
 
 // Global Socket ID. Bad idea, for testing only.
 int client_fd;
-struct addrinfo *client_info;
+struct addrinfo *servinfo;
 
 /////////////////////////////////////////////////////
 // Networking helper functions
@@ -72,11 +72,10 @@ int start_server()
 {
   // Open Communication Socket and wait for connection
   int sockfd;  // listen on sock_fd, new connection on new_fd
-  struct addrinfo hints, *servinfo, *p;
+  struct addrinfo hints, *p;
   socklen_t sin_size;
   struct sigaction sa;
   int yes=1;
-  char s[INET6_ADDRSTRLEN];
   int rv;
 
   memset(&hints, 0, sizeof hints);
@@ -97,17 +96,13 @@ int start_server()
       }
       break;
   }
-
-  freeaddrinfo(servinfo); // all done with this structure
   
   if (p == NULL){
       fprintf(stderr, "server: failed to bind\n");
       exit(1);
   }
 
-  client_info = p;
   client_fd = sockfd;
-  std::cout << "server: got connection from: " << s << std::endl;
 
   return client_fd;
 }
@@ -115,13 +110,13 @@ int start_server()
 
 /////////////////////////////////////////////////
 // Callback definitions.
-// This could be done with less functions, but Gazebo doesn't support additional arguments
+// This could be done with fewer functions, but Gazebo doesn't support additional arguments
 // and Implementing as a class would be more time consuming
 void cb_send(void* msg_buf, int msg_size)
 {
-  int temp;
-  temp = sendto(client_fd, msg_buf, msg_size, 0, client_info->ai_addr, client_info->ai_addrlen);
-  if(temp == -1) std::cout << "Send Error: " << errno << std::endl;
+  int status;
+  status = sendto(client_fd, msg_buf, msg_size, 0, servinfo->ai_addr, servinfo->ai_addrlen);
+  if(status == -1) std::cout << "Send Error. errno: " << errno << std::endl;
 }
 
 void cb_wall(ConstLaserScanStampedPtr &_msg)
@@ -242,6 +237,7 @@ int main(int _argc, char **_argv)
 
   // Make sure to shut everything down.
   close(client_fd);
+  freeaddrinfo(servinfo);
   gazebo::client::shutdown();
 }
 
