@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <ctime>
+#include <pthread.h>
 
 #include "Command.hh"
 #include "InterfaceAdapter.hh"
@@ -36,6 +37,11 @@ public:
   void propagateValueChange (const State&, const std::vector<Value>&) const;
 
 protected:
+  int openSocket();
+  static void *listen(void *context);
+
+  pthread_t listen_thread;
+  struct addrinfo *servinfo;
   bool at_waypoint, tilt_sensor, drive_stopped, bump_sensor, docking_started;
   int current_waypoint, socket_fd;
   Command *dock_cmd;

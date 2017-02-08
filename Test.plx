@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PlexilPlan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xmlns:tr="extended-plexil-translator"
-            FileName="/home/charles/plexil-4.0.1/examples/basic/plexil_test/Test.ple">
+            FileName="/home/charles/work/plexil-4.0.1/examples/basic/plexil_test/Test.ple">
    <GlobalDeclarations LineNo="2" ColNo="0">
       <CommandDeclaration LineNo="2" ColNo="0">
          <Name>debugMsg</Name>

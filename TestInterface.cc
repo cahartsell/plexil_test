@@ -36,6 +36,11 @@
 #define PORT "18463"
 #define IP_ADDR "127.0.0.1"
 #define MAXDATASIZE 100
+#define WALL_ID 0xA0
+#define LEFT_ID 0xA1
+#define LEFTFRONT_ID 0xA2
+#define RIGHT_ID 0xA3
+#define RIGHTFRONT_ID 0xA4
 
 #define DRIVE_TIME 5 //seconds
 #define TILT_SENSOR_PROB 0.005
@@ -49,9 +54,9 @@ using std::map;
 using std::string;
 using std::vector;
 using std::copy;
+using std::string;
 
 static TestInterface *Adapter;
-
 static vector<Value> const EmptyArgs;
 
 //////////////////////////////////////////////////////////////
@@ -80,50 +85,7 @@ static void* get_in_addr(struct sockaddr *sa)
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-static int connect_to_server()
-{
-  int sockfd;  
-  struct addrinfo hints, *servinfo, *p;
-  int rv;
-  char s[INET6_ADDRSTRLEN];
 
-  memset(&hints, 0, sizeof hints);
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_flags = AI_PASSIVE;
-
-  if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    return 1;
-  }
-
-  // loop through all the results and connect to the first we can
-  for(p = servinfo; p != NULL; p = p->ai_next) {
-    if ((sockfd = socket(p->ai_family, p->ai_socktype,
-			 p->ai_protocol)) == -1) {
-      perror("client: socket");
-      continue;
-    }
-    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-      close(sockfd);
-      perror("client: bind");
-      continue;
-    }
-    break;
-  }
-
-  if (p == NULL) {
-    fprintf(stderr, "client: failed to connect\n");
-    return 2;
-  }
-
-  inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-	    s, sizeof s);
-  debugMsg("TestInterface:Socket", "UDP Socket initialized with address: " << s);
-  
-  freeaddrinfo(servinfo); // all done with this structure
-  return sockfd;
-}
 
 //////////////////////////////////////////////////////////////
 // Class definitions
@@ -136,7 +98,10 @@ TestInterface::TestInterface(AdapterExecInterface& execInterface, const pugi::xm
 
 bool TestInterface::initialize()
 {
+  // Required boilerplate
   g_configuration->defaultRegisterAdapter(this);
+
+  // Variable definitions
   Adapter = this;
   at_waypoint = true;
   tilt_sensor = false;
@@ -146,8 +111,15 @@ bool TestInterface::initialize()
   start_time = std::time(NULL);
   dock_start_time = std::time(NULL);
   docking_started = false;
+
+  // Seed RNG
   std::srand( std::time(NULL) );
-  socket_fd = connect_to_server();
+
+  // UDP Socket and listener thread initilization 
+  socket_fd = openSocket();
+  pthread_create( &listen_thread, NULL, TestInterface::listen, this);
+
+  // Init finished
   debugMsg("TestInterface", " initialized.");
   return true;
 }
@@ -172,7 +144,9 @@ bool TestInterface::reset()
 
 bool TestInterface::shutdown()
 {
+  pthread_cancel( listen_thread );
   close( socket_fd );
+  freeaddrinfo( servinfo );
   debugMsg("TestInterface", " shutdown.");
   return true;
 }
@@ -324,6 +298,72 @@ void TestInterface::propagateValueChange(const State &state, const vector<Value>
 {
   m_execInterface.handleValueChange(state, value.front());
   m_execInterface.notifyOfExternalEvent();
+}
+
+int TestInterface::openSocket()
+{
+  // Taken from "Beej's Networking Guide"
+  int sockfd;  
+  struct addrinfo hints, *p;
+  int rv;
+  char s[INET6_ADDRSTRLEN];
+
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+    return 1;
+  }
+
+  // loop through all the results and connect to the first we can
+  for(p = servinfo; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype,
+			 p->ai_protocol)) == -1) {
+      perror("client: socket");
+      continue;
+    }
+    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(sockfd);
+      perror("client: bind");
+      continue;
+    }
+    break;
+  }
+
+  if (p == NULL) {
+    fprintf(stderr, "client: failed to connect\n");
+    return 2;
+  }
+
+  inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+	    s, sizeof s);
+  debugMsg("TestInterface:Socket", "UDP Socket initialized with address: " << s);
+  
+  return sockfd;
+}
+
+void* TestInterface::listen(void *context)
+{
+  struct sockaddr_storage their_addr;
+  socklen_t addr_len;
+  char buffer[ MAXDATASIZE+1 ];
+  int id, size_id, size_range;
+  double range;
+
+  size_id = sizeof(id);
+  size_range = sizeof(range);
+  
+  while(true){
+    recvfrom(socket_fd, buffer, MAXDATASIZE, 0, (struct sockaddr *)&their_addr, &addr_len);
+    memcpy( &id, &buffer[0], size_id );
+    memcpy( &range, &buffer[size_id], size_range );
+    debugMsg("TestInterface:Socket", "Received ID: " << id << " Range: " << range << endl);
+  }
+
+  return NULL;
 }
 
 // Required function
