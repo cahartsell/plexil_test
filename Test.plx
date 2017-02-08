@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PlexilPlan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xmlns:tr="extended-plexil-translator"
-            FileName="/home/charles/work/plexil-4.0.1/examples/basic/plexil_test/Test.ple">
+            FileName="/home/charles/plexil-4.0.1/examples/basic/plexil_test/Test.ple">
    <GlobalDeclarations LineNo="2" ColNo="0">
       <CommandDeclaration LineNo="2" ColNo="0">
          <Name>debugMsg</Name>
@@ -11,7 +11,7 @@
          </Parameter>
       </CommandDeclaration>
       <CommandDeclaration LineNo="3" ColNo="0">
-         <Name>driveToNextWaypoint</Name>
+         <Name>drive</Name>
       </CommandDeclaration>
       <CommandDeclaration LineNo="4" ColNo="0">
          <Name>reverseAndTurn</Name>
@@ -19,53 +19,64 @@
       <CommandDeclaration LineNo="5" ColNo="0">
          <Name>dock</Name>
       </CommandDeclaration>
-      <CommandDeclaration LineNo="6" ColNo="0">
-         <Name>update</Name>
-      </CommandDeclaration>
-      <StateDeclaration LineNo="8" ColNo="8">
-         <Name>at_waypoint</Name>
+      <StateDeclaration LineNo="7" ColNo="5">
+         <Name>wall_sensor</Name>
          <Return>
             <Name>_return_0</Name>
-            <Type>Boolean</Type>
+            <Type>Real</Type>
          </Return>
       </StateDeclaration>
-      <StateDeclaration LineNo="9" ColNo="8">
-         <Name>tilt_sensor</Name>
+      <StateDeclaration LineNo="8" ColNo="5">
+         <Name>left_sensor</Name>
          <Return>
             <Name>_return_0</Name>
-            <Type>Boolean</Type>
+            <Type>Real</Type>
          </Return>
       </StateDeclaration>
-      <StateDeclaration LineNo="10" ColNo="8">
-         <Name>bump_sensor</Name>
+      <StateDeclaration LineNo="9" ColNo="5">
+         <Name>leftfront_sensor</Name>
          <Return>
             <Name>_return_0</Name>
-            <Type>Boolean</Type>
+            <Type>Real</Type>
          </Return>
       </StateDeclaration>
-      <StateDeclaration LineNo="11" ColNo="8">
-         <Name>current_waypoint</Name>
+      <StateDeclaration LineNo="10" ColNo="5">
+         <Name>right_sensor</Name>
          <Return>
             <Name>_return_0</Name>
-            <Type>Integer</Type>
+            <Type>Real</Type>
+         </Return>
+      </StateDeclaration>
+      <StateDeclaration LineNo="11" ColNo="5">
+         <Name>rightfront_sensor</Name>
+         <Return>
+            <Name>_return_0</Name>
+            <Type>Real</Type>
          </Return>
       </StateDeclaration>
    </GlobalDeclarations>
-   <Node NodeType="NodeList" epx="Concurrence" LineNo="13" ColNo="6">
+   <Node NodeType="NodeList" epx="Concurrence" LineNo="14" ColNo="6">
       <NodeId>Main</NodeId>
       <VariableDeclarations>
-         <DeclareVariable LineNo="14" ColNo="2">
+         <DeclareVariable LineNo="15" ColNo="2">
             <Name>drive_done</Name>
             <Type>Boolean</Type>
             <InitialValue>
                <BooleanValue>false</BooleanValue>
             </InitialValue>
          </DeclareVariable>
-         <DeclareVariable LineNo="15" ColNo="2">
-            <Name>num_waypoints</Name>
-            <Type>Integer</Type>
+         <DeclareVariable LineNo="16" ColNo="2">
+            <Name>SENSOR_TOL</Name>
+            <Type>Real</Type>
             <InitialValue>
-               <IntegerValue>3</IntegerValue>
+               <RealValue>0.035</RealValue>
+            </InitialValue>
+         </DeclareVariable>
+         <DeclareVariable LineNo="17" ColNo="2">
+            <Name>SENSOR_MAX</Name>
+            <Type>Real</Type>
+            <InitialValue>
+               <RealValue>0.04</RealValue>
             </InitialValue>
          </DeclareVariable>
       </VariableDeclarations>
@@ -77,47 +88,59 @@
       </EndCondition>
       <NodeBody>
          <NodeList>
-            <Node NodeType="Command" LineNo="24" ColNo="4">
+            <Node NodeType="Command" LineNo="28" ColNo="4">
                <NodeId>DriveToWaypoint</NodeId>
                <RepeatCondition>
-                  <LT>
-                     <LookupOnChange>
-                        <Name>
-                           <StringValue>current_waypoint</StringValue>
-                        </Name>
-                     </LookupOnChange>
-                     <IntegerVariable>num_waypoints</IntegerVariable>
-                  </LT>
-               </RepeatCondition>
-               <InvariantCondition>
                   <EQBoolean>
-                     <LookupNow>
-                        <Name>
-                           <StringValue>tilt_sensor</StringValue>
-                        </Name>
-                     </LookupNow>
+                     <BooleanVariable>drive_done</BooleanVariable>
                      <BooleanValue>false</BooleanValue>
                   </EQBoolean>
+               </RepeatCondition>
+               <InvariantCondition>
+                  <AND>
+                     <LT>
+                        <LookupNow>
+                           <Name>
+                              <StringValue>left_sensor</StringValue>
+                           </Name>
+                        </LookupNow>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </LT>
+                     <LT>
+                        <LookupNow>
+                           <Name>
+                              <StringValue>leftfront_sensor</StringValue>
+                           </Name>
+                        </LookupNow>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </LT>
+                     <LT>
+                        <LookupNow>
+                           <Name>
+                              <StringValue>right_sensor</StringValue>
+                           </Name>
+                        </LookupNow>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </LT>
+                     <LT>
+                        <LookupNow>
+                           <Name>
+                              <StringValue>rightfront_sensor</StringValue>
+                           </Name>
+                        </LookupNow>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </LT>
+                  </AND>
                </InvariantCondition>
-               <EndCondition>
-                  <EQBoolean>
-                     <LookupOnChange>
-                        <Name>
-                           <StringValue>at_waypoint</StringValue>
-                        </Name>
-                     </LookupOnChange>
-                     <BooleanValue>true</BooleanValue>
-                  </EQBoolean>
-               </EndCondition>
                <NodeBody>
                   <Command>
                      <Name>
-                        <StringValue>driveToNextWaypoint</StringValue>
+                        <StringValue>drive</StringValue>
                      </Name>
                   </Command>
                </NodeBody>
             </Node>
-            <Node NodeType="Command" LineNo="31" ColNo="4">
+            <Node NodeType="Command" LineNo="38" ColNo="4">
                <NodeId>TiltSensor</NodeId>
                <RepeatCondition>
                   <EQBoolean>
@@ -126,14 +149,40 @@
                   </EQBoolean>
                </RepeatCondition>
                <StartCondition>
-                  <EQBoolean>
-                     <LookupOnChange>
-                        <Name>
-                           <StringValue>tilt_sensor</StringValue>
-                        </Name>
-                     </LookupOnChange>
-                     <BooleanValue>true</BooleanValue>
-                  </EQBoolean>
+                  <AND>
+                     <GT>
+                        <LookupOnChange>
+                           <Name>
+                              <StringValue>left_sensor</StringValue>
+                           </Name>
+                        </LookupOnChange>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </GT>
+                     <GT>
+                        <LookupOnChange>
+                           <Name>
+                              <StringValue>leftfront_sensor</StringValue>
+                           </Name>
+                        </LookupOnChange>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </GT>
+                     <GT>
+                        <LookupOnChange>
+                           <Name>
+                              <StringValue>right_sensor</StringValue>
+                           </Name>
+                        </LookupOnChange>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </GT>
+                     <GT>
+                        <LookupOnChange>
+                           <Name>
+                              <StringValue>rightfront_sensor</StringValue>
+                           </Name>
+                        </LookupOnChange>
+                        <RealVariable>SENSOR_TOL</RealVariable>
+                     </GT>
+                  </AND>
                </StartCondition>
                <NodeBody>
                   <Command>
@@ -143,7 +192,7 @@
                   </Command>
                </NodeBody>
             </Node>
-            <Node NodeType="Command" LineNo="38" ColNo="4">
+            <Node NodeType="Command" LineNo="45" ColNo="4">
                <NodeId>BumpSensor</NodeId>
                <RepeatCondition>
                   <EQBoolean>
@@ -152,14 +201,14 @@
                   </EQBoolean>
                </RepeatCondition>
                <StartCondition>
-                  <EQBoolean>
+                  <LT>
                      <LookupOnChange>
                         <Name>
-                           <StringValue>bump_sensor</StringValue>
+                           <StringValue>wall_sensor</StringValue>
                         </Name>
                      </LookupOnChange>
-                     <BooleanValue>true</BooleanValue>
-                  </EQBoolean>
+                     <RealVariable>SENSOR_TOL</RealVariable>
+                  </LT>
                </StartCondition>
                <NodeBody>
                   <Command>
@@ -169,17 +218,10 @@
                   </Command>
                </NodeBody>
             </Node>
-            <Node NodeType="NodeList" epx="Sequence" LineNo="44" ColNo="4">
+            <Node NodeType="NodeList" epx="Sequence" LineNo="51" ColNo="4">
                <NodeId>DriveToDock</NodeId>
                <StartCondition>
-                  <GE>
-                     <LookupOnChange>
-                        <Name>
-                           <StringValue>current_waypoint</StringValue>
-                        </Name>
-                     </LookupOnChange>
-                     <IntegerVariable>num_waypoints</IntegerVariable>
-                  </GE>
+                  <BooleanValue>false</BooleanValue>
                </StartCondition>
                <InvariantCondition>
                   <NOT>
@@ -231,7 +273,7 @@
                </InvariantCondition>
                <NodeBody>
                   <NodeList>
-                     <Node NodeType="Command" LineNo="47" ColNo="6">
+                     <Node NodeType="Command" LineNo="54" ColNo="6">
                         <NodeId>StartDock</NodeId>
                         <EndCondition>
                            <EQInternal>
@@ -249,7 +291,7 @@
                            </Command>
                         </NodeBody>
                      </Node>
-                     <Node NodeType="Command" LineNo="49" ColNo="4">
+                     <Node NodeType="Command" LineNo="56" ColNo="4">
                         <NodeId>COMMAND__4</NodeId>
                         <StartCondition>
                            <EQInternal>
@@ -264,13 +306,13 @@
                               <Name>
                                  <StringValue>debugMsg</StringValue>
                               </Name>
-                              <Arguments LineNo="50" ColNo="14">
+                              <Arguments LineNo="57" ColNo="14">
                                  <StringValue>MISSION COMPLETE</StringValue>
                               </Arguments>
                            </Command>
                         </NodeBody>
                      </Node>
-                     <Node NodeType="Assignment" LineNo="51" ColNo="4">
+                     <Node NodeType="Assignment" LineNo="58" ColNo="4">
                         <NodeId>ASSIGNMENT__5</NodeId>
                         <StartCondition>
                            <EQInternal>
@@ -290,22 +332,6 @@
                         </NodeBody>
                      </Node>
                   </NodeList>
-               </NodeBody>
-            </Node>
-            <Node NodeType="Command" LineNo="59" ColNo="4">
-               <NodeId>UpdateLoop</NodeId>
-               <RepeatCondition>
-                  <EQBoolean>
-                     <BooleanVariable>drive_done</BooleanVariable>
-                     <BooleanValue>false</BooleanValue>
-                  </EQBoolean>
-               </RepeatCondition>
-               <NodeBody>
-                  <Command>
-                     <Name>
-                        <StringValue>update</StringValue>
-                     </Name>
-                  </Command>
                </NodeBody>
             </Node>
          </NodeList>

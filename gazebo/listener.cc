@@ -38,11 +38,18 @@
 #define IP_ADDR "127.0.0.1"
 #define BACKLOG 10
 
+// Sensor ID's
 #define WALL_ID 0xA0
 #define LEFT_ID 0xA1
 #define LEFTFRONT_ID 0xA2
 #define RIGHT_ID 0xA3
 #define RIGHTFRONT_ID 0xA4
+
+// Command ID's
+#define STOP_CMD 0xB0
+#define FORWARD_CMD 0xB1
+#define REVERSE_CMD 0xB2
+#define TURN_CMD 0xB3
 
 // Global Socket ID. Bad idea, for testing only.
 int client_fd;
@@ -225,14 +232,27 @@ int main(int _argc, char **_argv)
   ignition::math::Pose3<double> stop(0,0,0,0,0,0);
   ignition::math::Pose3<double> turn(0,0,0,0,0,10);
   gazebo::msgs::Pose msg;
+  int cmd_id, size_id;
+  size_id = sizeof(int);
+  struct sockaddr_storage their_addr;
+  socklen_t addr_len;
 
   while (true){
-    gazebo::msgs::Set(&msg, forward);
+    recvfrom(client_fd, &cmd_id, size_id, 0,
+	     (struct sockaddr *)&their_addr, &addr_len);
+    
+    switch(cmd_id){
+    case FORWARD_CMD:
+      gazebo::msgs::Set(&msg, forward);
+      break;
+    case STOP_CMD:
+      gazebo::msgs::Set(&msg, stop);
+      break;
+    default:
+      break;
+    }
+    
     velCmdPub->Publish( msg );
-    gazebo::common::Time::MSleep(1000);
-    gazebo::msgs::Set(&msg, turn);
-    velCmdPub->Publish( msg );
-    gazebo::common::Time::MSleep(1000);
   }
 
   // Make sure to shut everything down.

@@ -10,6 +10,13 @@
 #include <iostream>
 #include <ctime>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 #include "Command.hh"
 #include "InterfaceAdapter.hh"
@@ -38,14 +45,15 @@ public:
 
 protected:
   int openSocket();
-  static void *listen(void *context);
+  int sendCmd(int id);
+  static void *listen(void *arg);
 
+  struct sockaddr_storage their_addr;
+  socklen_t addr_len;
   pthread_t listen_thread;
   struct addrinfo *servinfo;
-  bool at_waypoint, tilt_sensor, drive_stopped, bump_sensor, docking_started;
-  int current_waypoint, socket_fd;
-  Command *dock_cmd;
-  std::time_t start_time, dock_start_time;
+  int socket_fd;
+  double wall_range, left_range, leftfront_range, right_range, rightfront_range;
   std::set<State> subscribedStates;
 };
 

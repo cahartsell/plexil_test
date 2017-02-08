@@ -1,46 +1,53 @@
 Command debugMsg( String msg );
-Command driveToNextWaypoint();
+Command drive();
 Command reverseAndTurn();
 Command dock();
-Command update();
 
-Boolean Lookup at_waypoint;
-Boolean Lookup tilt_sensor;
-Boolean Lookup bump_sensor;
-Integer Lookup current_waypoint;
+Real Lookup wall_sensor;
+Real Lookup left_sensor;
+Real Lookup leftfront_sensor;
+Real Lookup right_sensor;
+Real Lookup rightfront_sensor;
+
 
 Main: Concurrence
 {
   Boolean drive_done = false;
-  Integer num_waypoints = 3;
+  Real SENSOR_TOL = 0.035;
+  Real SENSOR_MAX = 0.04;
   
   EndCondition drive_done == true;
 
   DriveToWaypoint:
   {
-    RepeatCondition Lookup(current_waypoint) < num_waypoints;
-    InvariantCondition Lookup(tilt_sensor) == false;
-    EndCondition Lookup(at_waypoint) == true;
-    driveToNextWaypoint();
+    RepeatCondition drive_done == false;
+    InvariantCondition Lookup(left_sensor) < SENSOR_TOL &&
+    		       Lookup(leftfront_sensor) < SENSOR_TOL &&
+		       Lookup(right_sensor) < SENSOR_TOL &&
+		       Lookup(rightfront_sensor) < SENSOR_TOL;
+    drive();
   }
 
   TiltSensor:
   {
     RepeatCondition drive_done == false;
-    StartCondition Lookup(tilt_sensor) == true;
+    StartCondition Lookup(left_sensor) > SENSOR_TOL &&
+    		   Lookup(leftfront_sensor) > SENSOR_TOL &&
+		   Lookup(right_sensor) > SENSOR_TOL &&
+		   Lookup(rightfront_sensor) > SENSOR_TOL;
     reverseAndTurn();
   }
 
   BumpSensor:
   {
     RepeatCondition drive_done == false;
-    StartCondition Lookup(bump_sensor) == true;
+    StartCondition Lookup(wall_sensor) < SENSOR_TOL;
     reverseAndTurn();
   }
 
   DriveToDock:
   {
-    StartCondition Lookup(current_waypoint) >= num_waypoints;
+    StartCondition false;
     StartDock:
     {
       EndCondition StartDock.command_handle == COMMAND_SUCCESS;
@@ -50,12 +57,4 @@ Main: Concurrence
     drive_done = true;
   }
 
-
-// Function to force external interface to update
-// Necessary due to lack of external application
-  UpdateLoop:
-  {
-    RepeatCondition drive_done == false;
-    update();
-  }
 }

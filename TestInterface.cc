@@ -25,27 +25,23 @@
 #include <cstdio>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/wait.h>
-#include <signal.h>
 
 #define PORT "18463"
 #define IP_ADDR "127.0.0.1"
 #define MAXDATASIZE 100
+
+// Lookup value ID's
 #define WALL_ID 0xA0
 #define LEFT_ID 0xA1
 #define LEFTFRONT_ID 0xA2
 #define RIGHT_ID 0xA3
 #define RIGHTFRONT_ID 0xA4
 
-#define DRIVE_TIME 5 //seconds
-#define TILT_SENSOR_PROB 0.005
-#define BUMP_SENSOR_PROB 0.01
-#define DOCKING_TIME 10 //seconds
+// Command ID's
+#define STOP_CMD 0xB0
+#define FORWARD_CMD 0xB1
+#define REVERSE_CMD 0xB2
+#define TURN_CMD 0xB3
 
 using std::cout;
 using std::cerr;
@@ -101,19 +97,13 @@ bool TestInterface::initialize()
   // Required boilerplate
   g_configuration->defaultRegisterAdapter(this);
 
-  // Variable definitions
+  // Variable initilizations
   Adapter = this;
-  at_waypoint = true;
-  tilt_sensor = false;
-  drive_stopped = false;
-  bump_sensor = false;
-  current_waypoint = 0;
-  start_time = std::time(NULL);
-  dock_start_time = std::time(NULL);
-  docking_started = false;
-
-  // Seed RNG
-  std::srand( std::time(NULL) );
+  wall_range = HUGE_VAL;
+  left_range = 0.0;
+  leftfront_range = 0.0;
+  right_range = 0.0;
+  rightfront_range = 0.0;
 
   // UDP Socket and listener thread initilization 
   socket_fd = openSocket();
@@ -157,10 +147,8 @@ void TestInterface::invokeAbort(Command *cmd)
   debugMsg("TestInterface:Command", "Aborting command: " << name);
   bool retval;
 
-  if (name == "driveToNextWaypoint"){
-    // Imaginary braking function to stop robot in place
-    drive_stopped = true;
-    retval = true;
+  if (name == "drive"){
+    sendCmd( STOP_CMD );
   }
   else{
     debugMsg("TestInterface:Command", "Abort failed. Unknown command: " << name);
@@ -178,76 +166,25 @@ void TestInterface::executeCommand(Command *cmd)
   std::vector<Value> args;
   args = cmd->getArgValues();
 
-  // Storage for argument variables
   string s;
-  int32_t i, rand_mod;
-  double d;
   State st;
   
   if (name == "debugMsg"){
     args[0].getValue(s);
     debugMsg("TestInterface:Command", s);
   }
-  else if (name == "driveToNextWaypoint"){
-    start_time = std::time(NULL);
-    at_waypoint = false;
-  }
-  else if (name =="update"){
-    // Driving to waypoint takes fixed amount of time
-    if ((std::time(NULL) - start_time) > DRIVE_TIME){
-      if(at_waypoint == false && drive_stopped == false){
-	debugMsg("TestInterface:Update", "Updating at_waypoint");
-	at_waypoint = true;
-	current_waypoint++;
-	st = createState("at_waypoint", EmptyArgs);
-	Adapter->propagateValueChange(st, vector<Value> (1, at_waypoint));
-	st = createState("current_waypoint", EmptyArgs);
-	Adapter->propagateValueChange(st, vector<Value> (1, current_waypoint));
-      }
-    }
-
-    // Very basic random probabilty of tilt_sensor or bump_sensor tripping
-    rand_mod = (int)(round( 1/TILT_SENSOR_PROB ));
-    i = rand() % rand_mod;
-    if( i == 0 ){
-      tilt_sensor = true;
-      st = createState("tilt_sensor", EmptyArgs);
-      Adapter->propagateValueChange(st, vector<Value> (1, tilt_sensor));
-    }
-    rand_mod = (int)(round( 1/BUMP_SENSOR_PROB ));
-    i = rand() % rand_mod;
-    if( i == 0 ){
-      bump_sensor = true;
-      st = createState("bump_sensor", EmptyArgs);
-      Adapter->propagateValueChange(st, vector<Value> (1, bump_sensor));
-    }
-
-    // Driving to dock and docking takes fixed amount of time
-    if(docking_started){
-      if((std::time(NULL) - dock_start_time) > DOCKING_TIME){
-	debugMsg("TestInterface:Update", "Docking complete. Sending command success message.");
-	m_execInterface.handleCommandAck(dock_cmd, COMMAND_SUCCESS);
-      }
-    }
+  else if (name == "drive"){
+    sendCmd(FORWARD_CMD);
   }
   else if (name == "reverseAndTurn"){
-    // Imaginary function to reverse robot away from obstace and turn to new path
-    drive_stopped = false;
-    tilt_sensor = false;
-    bump_sensor = false;
-    start_time = std::time(NULL);
-    st = createState("tilt_sensor", EmptyArgs);
-    Adapter->propagateValueChange(st, vector<Value> (1, tilt_sensor));
+    sendCmd(REVERSE_CMD);
   }
   else if (name == "dock"){
-    dock_start_time = std::time(NULL);
-    docking_started = true;
-    dock_cmd = cmd;
+    ////////////// Need to handle command
   }
   else{
     debugMsg("TestInterface:Command", "Command failed. Unknown command: " << name);
   }
-
 
   // PLEXIL pends on command acknowledgement (does not block - concurrent portions can continue)
   m_execInterface.handleCommandAck(cmd, COMMAND_SENT_TO_SYSTEM);
@@ -260,17 +197,20 @@ void TestInterface::lookupNow(State const &state, StateCacheEntry &entry)
   const vector<Value> &args = state.parameters();
   Value retval;
 
-  if (name == "at_waypoint"){
-    retval = at_waypoint;
+  if (name == "wall_sensor"){
+    retval = wall_range;
   }
-  else if (name == "current_waypoint"){
-    retval = current_waypoint;
+  else if (name == "left_sensor"){
+    retval = left_range;
   }
-  else if (name == "tilt_sensor"){
-    retval = tilt_sensor;
+  else if (name == "leftfront_sensor"){
+    retval = leftfront_range;
   }
-  else if (name == "bump_sensor"){
-    retval = bump_sensor;
+  else if (name == "right_sensor"){
+    retval = right_range;
+  }
+  else if (name == "rightfront_sensor"){
+    retval = rightfront_range;
   }
   else{
     debugMsg("TestInterface:Lookup", "LookupNow Failed. Unknown lookup variable: " << name);
@@ -305,7 +245,7 @@ int TestInterface::openSocket()
   // Taken from "Beej's Networking Guide"
   int sockfd;  
   struct addrinfo hints, *p;
-  int rv;
+  int rv, init_msg;
   char s[INET6_ADDRSTRLEN];
 
   memset(&hints, 0, sizeof hints);
@@ -338,29 +278,76 @@ int TestInterface::openSocket()
     return 2;
   }
 
-  inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-	    s, sizeof s);
+  // Wait to receive initial message and store server address info
+  recvfrom(socket_fd, &init_msg, sizeof(int), 0, (struct sockaddr *)&their_addr, &addr_len);
+  
+  servinfo = p;
+  inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
   debugMsg("TestInterface:Socket", "UDP Socket initialized with address: " << s);
   
   return sockfd;
 }
 
-void* TestInterface::listen(void *context)
+int TestInterface::sendCmd(int id)
 {
-  struct sockaddr_storage their_addr;
-  socklen_t addr_len;
+  int status;
+  status = sendto(socket_fd, (void*)&id, sizeof(int), 0, (struct sockaddr*)&their_addr, addr_len);
+  if(status == -1) debugMsg("TestInterface:Socket", "Send Error: " << errno);
+
+  return status;
+}
+
+void* TestInterface::listen(void *arg)
+{
+  TestInterface *context = (TestInterface*)arg;
   char buffer[ MAXDATASIZE+1 ];
+  string name;
+  Value retval;
+  State st;
   int id, size_id, size_range;
   double range;
-
+  
   size_id = sizeof(id);
   size_range = sizeof(range);
-  
+
+  // Recieve data over socket
   while(true){
-    recvfrom(socket_fd, buffer, MAXDATASIZE, 0, (struct sockaddr *)&their_addr, &addr_len);
+    recvfrom(context->socket_fd, buffer, MAXDATASIZE, 0,
+	     (struct sockaddr *)&(context->their_addr), &(context->addr_len));
     memcpy( &id, &buffer[0], size_id );
     memcpy( &range, &buffer[size_id], size_range );
-    debugMsg("TestInterface:Socket", "Received ID: " << id << " Range: " << range << endl);
+
+    // check ID and set appropriate name
+    switch(id){
+    case WALL_ID:
+      name = "wall_sensor";
+      context->wall_range = range;
+      break;
+    case LEFT_ID:
+      name = "left_sensor";
+      context->left_range = range;
+      break;
+    case LEFTFRONT_ID:
+      name = "leftfront_sensor";
+      context->leftfront_range = range;
+      break;
+    case RIGHT_ID:
+      name = "right_sensor";
+      context->right_range = range;
+      break;
+    case RIGHTFRONT_ID:
+      name = "rightfront_sensor";
+      context->rightfront_range = range;
+      break;
+    default:
+      debugMsg("TestInterface:Socket", "Recieved unknown sensor ID: " << id);
+      break;
+    }
+
+    // Propigate change to PLEXIL
+    retval = (Value)range;
+    st = createState(name, EmptyArgs);
+    context->propagateValueChange(st, vector<Value> (1, retval));
   }
 
   return NULL;
