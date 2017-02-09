@@ -45,7 +45,7 @@ public:
 
 protected:
   int openSocket();
-  int sendCmd(int id);
+  int sendCmd(int id, double arg);
   static void *listen(void *arg);
 
   struct sockaddr_storage their_addr;

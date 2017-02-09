@@ -1,4 +1,3 @@
-
 /*
  * Basic PLEXIL Interface Adapter
  * Intended for testing detailed semantics of PLEXIL interfacing
@@ -50,7 +49,6 @@ using std::map;
 using std::string;
 using std::vector;
 using std::copy;
-using std::string;
 
 static TestInterface *Adapter;
 static vector<Value> const EmptyArgs;
@@ -80,7 +78,6 @@ static void* get_in_addr(struct sockaddr *sa)
   }
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
-
 
 
 //////////////////////////////////////////////////////////////
@@ -148,7 +145,7 @@ void TestInterface::invokeAbort(Command *cmd)
   bool retval;
 
   if (name == "drive"){
-    sendCmd( STOP_CMD );
+    sendCmd(STOP_CMD, 0.0);
   }
   else{
     debugMsg("TestInterface:Command", "Abort failed. Unknown command: " << name);
@@ -174,10 +171,10 @@ void TestInterface::executeCommand(Command *cmd)
     debugMsg("TestInterface:Command", s);
   }
   else if (name == "drive"){
-    sendCmd(FORWARD_CMD);
+    sendCmd(FORWARD_CMD, 0.0);
   }
   else if (name == "reverseAndTurn"){
-    sendCmd(REVERSE_CMD);
+    sendCmd(REVERSE_CMD, 0.0);
   }
   else if (name == "dock"){
     ////////////// Need to handle command
@@ -288,10 +285,14 @@ int TestInterface::openSocket()
   return sockfd;
 }
 
-int TestInterface::sendCmd(int id)
+int TestInterface::sendCmd(int id, double arg)
 {
   int status;
-  status = sendto(socket_fd, (void*)&id, sizeof(int), 0, (struct sockaddr*)&their_addr, addr_len);
+  char buf[sizeof(id) + sizeof(arg)];
+
+  memcpy(&buf[0], &id, sizeof(id));
+  memcpy(&buf[sizeof(id)], &arg, sizeof(arg));
+  status = sendto(socket_fd, (void*)buf, sizeof(buf), 0, (struct sockaddr*)&their_addr, addr_len);
   if(status == -1) debugMsg("TestInterface:Socket", "Send Error: " << errno);
 
   return status;
@@ -300,7 +301,7 @@ int TestInterface::sendCmd(int id)
 void* TestInterface::listen(void *arg)
 {
   TestInterface *context = (TestInterface*)arg;
-  char buffer[ MAXDATASIZE+1 ];
+  char buffer[ MAXDATASIZE ];
   string name;
   Value retval;
   State st;

@@ -88,7 +88,7 @@
       </EndCondition>
       <NodeBody>
          <NodeList>
-            <Node NodeType="Command" LineNo="28" ColNo="4">
+            <Node NodeType="Command" LineNo="29" ColNo="4">
                <NodeId>DriveToWaypoint</NodeId>
                <RepeatCondition>
                   <EQBoolean>
@@ -132,6 +132,16 @@
                      </LT>
                   </AND>
                </InvariantCondition>
+               <EndCondition>
+                  <LT>
+                     <LookupOnChange>
+                        <Name>
+                           <StringValue>wall_sensor</StringValue>
+                        </Name>
+                     </LookupOnChange>
+                     <RealVariable>SENSOR_TOL</RealVariable>
+                  </LT>
+               </EndCondition>
                <NodeBody>
                   <Command>
                      <Name>
@@ -140,7 +150,7 @@
                   </Command>
                </NodeBody>
             </Node>
-            <Node NodeType="Command" LineNo="38" ColNo="4">
+            <Node NodeType="Command" LineNo="39" ColNo="4">
                <NodeId>TiltSensor</NodeId>
                <RepeatCondition>
                   <EQBoolean>
@@ -192,7 +202,7 @@
                   </Command>
                </NodeBody>
             </Node>
-            <Node NodeType="Command" LineNo="45" ColNo="4">
+            <Node NodeType="Command" LineNo="46" ColNo="4">
                <NodeId>BumpSensor</NodeId>
                <RepeatCondition>
                   <EQBoolean>
@@ -218,7 +228,7 @@
                   </Command>
                </NodeBody>
             </Node>
-            <Node NodeType="NodeList" epx="Sequence" LineNo="51" ColNo="4">
+            <Node NodeType="NodeList" epx="Sequence" LineNo="52" ColNo="4">
                <NodeId>DriveToDock</NodeId>
                <StartCondition>
                   <BooleanValue>false</BooleanValue>
@@ -273,7 +283,7 @@
                </InvariantCondition>
                <NodeBody>
                   <NodeList>
-                     <Node NodeType="Command" LineNo="54" ColNo="6">
+                     <Node NodeType="Command" LineNo="55" ColNo="6">
                         <NodeId>StartDock</NodeId>
                         <EndCondition>
                            <EQInternal>
@@ -291,7 +301,7 @@
                            </Command>
                         </NodeBody>
                      </Node>
-                     <Node NodeType="Command" LineNo="56" ColNo="4">
+                     <Node NodeType="Command" LineNo="57" ColNo="4">
                         <NodeId>COMMAND__4</NodeId>
                         <StartCondition>
                            <EQInternal>
@@ -306,13 +316,13 @@
                               <Name>
                                  <StringValue>debugMsg</StringValue>
                               </Name>
-                              <Arguments LineNo="57" ColNo="14">
+                              <Arguments LineNo="58" ColNo="14">
                                  <StringValue>MISSION COMPLETE</StringValue>
                               </Arguments>
                            </Command>
                         </NodeBody>
                      </Node>
-                     <Node NodeType="Assignment" LineNo="58" ColNo="4">
+                     <Node NodeType="Assignment" LineNo="59" ColNo="4">
                         <NodeId>ASSIGNMENT__5</NodeId>
                         <StartCondition>
                            <EQInternal>

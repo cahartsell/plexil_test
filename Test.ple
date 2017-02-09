@@ -25,6 +25,7 @@ Main: Concurrence
     		       Lookup(leftfront_sensor) < SENSOR_TOL &&
 		       Lookup(right_sensor) < SENSOR_TOL &&
 		       Lookup(rightfront_sensor) < SENSOR_TOL;
+    EndCondition Lookup(wall_sensor) < SENSOR_TOL;
     drive();
   }
 

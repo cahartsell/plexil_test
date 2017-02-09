@@ -114,6 +114,28 @@ int start_server()
   return client_fd;
 }
 
+int recvCmd(int *id, double *arg)
+{
+  int status;
+  struct sockaddr_storage their_addr;
+  socklen_t addr_len;
+  char buf[12];
+
+  addr_len = sizeof(struct sockaddr);
+  memset(&buf, 0, sizeof(buf));
+  status = recvfrom(client_fd, (void*)buf, sizeof(buf), 0,
+		    (struct sockaddr*)&their_addr, &addr_len);
+
+  if(status != 12) std::cout << "Warning: Recieved message with unexpected size." << std::endl;
+  if(status == -1) std::cout << "ERROR: Receiving command failed. errno:" << errno << std::endl;
+  else{
+    memcpy(id, &buf[0], sizeof(int));
+    memcpy(arg, &buf[sizeof(int)], sizeof(double));
+  }
+
+  return status;
+}
+
 
 /////////////////////////////////////////////////
 // Callback definitions.
@@ -231,27 +253,31 @@ int main(int _argc, char **_argv)
   ignition::math::Pose3<double> forward(1,0,0,0,0,0);
   ignition::math::Pose3<double> stop(0,0,0,0,0,0);
   ignition::math::Pose3<double> turn(0,0,0,0,0,10);
+  ignition::math::Pose3<double> reverse(-1,0,0,0,0,0);
   gazebo::msgs::Pose msg;
-  int cmd_id, size_id;
-  size_id = sizeof(int);
-  struct sockaddr_storage their_addr;
-  socklen_t addr_len;
+  int cmd_id;
+  double cmd_arg;
 
   while (true){
-    recvfrom(client_fd, &cmd_id, size_id, 0,
-	     (struct sockaddr *)&their_addr, &addr_len);
+    recvCmd(&cmd_id, &cmd_arg);
     
     switch(cmd_id){
     case FORWARD_CMD:
       gazebo::msgs::Set(&msg, forward);
       break;
+    case REVERSE_CMD:
+      gazebo::msgs::Set(&msg, reverse);
+      break;
+    case TURN_CMD:
+      gazebo::msgs::Set(&msg, turn);
+      break;
     case STOP_CMD:
       gazebo::msgs::Set(&msg, stop);
       break;
     default:
+      std::cout << "Unknown command ID: " << cmd_id << std::endl;
       break;
     }
-    
     velCmdPub->Publish( msg );
   }
 
