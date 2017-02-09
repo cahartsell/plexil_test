@@ -55,6 +55,7 @@ protected:
   int socket_fd;
   double wall_range, left_range, leftfront_range, right_range, rightfront_range;
   std::set<State> subscribedStates;
+  Command *last_cmd;
 };
 
 extern "C" {

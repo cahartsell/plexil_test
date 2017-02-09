@@ -1,6 +1,7 @@
 Command debugMsg( String msg );
 Command drive();
-Command reverseAndTurn();
+Command reverse();
+Command turn();
 Command dock();
 
 Real Lookup wall_sensor;
@@ -13,6 +14,7 @@ Real Lookup rightfront_sensor;
 Main: Concurrence
 {
   Boolean drive_done = false;
+  Boolean ready_to_drive = true;
   Real SENSOR_TOL = 0.035;
   Real SENSOR_MAX = 0.04;
   
@@ -21,6 +23,7 @@ Main: Concurrence
   DriveToWaypoint:
   {
     RepeatCondition drive_done == false;
+    StartCondition ready_to_drive == true;
     InvariantCondition Lookup(left_sensor) < SENSOR_TOL &&
     		       Lookup(leftfront_sensor) < SENSOR_TOL &&
 		       Lookup(right_sensor) < SENSOR_TOL &&
@@ -36,14 +39,40 @@ Main: Concurrence
     		   Lookup(leftfront_sensor) > SENSOR_TOL &&
 		   Lookup(right_sensor) > SENSOR_TOL &&
 		   Lookup(rightfront_sensor) > SENSOR_TOL;
-    reverseAndTurn();
+    ready_to_drive = false;
+    Reverse:
+    {
+      EndCondition Reverse.command_handle == COMMAND_SUCCESS;
+      reverse();
+    }
+    Turn:
+    {
+      EndCondition Turn.command_handle == COMMAND_SUCCESS;
+      turn();
+    }
+    ready_to_drive = true;
   }
 
   BumpSensor:
   {
     RepeatCondition drive_done == false;
     StartCondition Lookup(wall_sensor) < SENSOR_TOL;
-    reverseAndTurn();
+    InvariantCondition Lookup(left_sensor) < SENSOR_TOL &&
+    		       Lookup(leftfront_sensor) < SENSOR_TOL &&
+		       Lookup(right_sensor) < SENSOR_TOL &&
+		       Lookup(rightfront_sensor) < SENSOR_TOL;
+    ready_to_drive = false;
+    Reverse:
+    {
+      EndCondition Reverse.command_handle == COMMAND_SUCCESS;
+      reverse();
+    }
+    Turn:
+    {
+      EndCondition Turn.command_handle == COMMAND_SUCCESS;
+      turn();
+    }
+    ready_to_drive = true;
   }
 
   DriveToDock:

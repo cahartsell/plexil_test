@@ -28,6 +28,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -50,6 +51,8 @@
 #define FORWARD_CMD 0xB1
 #define REVERSE_CMD 0xB2
 #define TURN_CMD 0xB3
+#define CMD_SUCCESS 0xBE
+#define CMD_FAIL 0xBF
 
 // Global Socket ID. Bad idea, for testing only.
 int client_fd;
@@ -96,21 +99,20 @@ int start_server()
 
   // loop through all the results and bind to the first we can
   for(p = servinfo; p != NULL; p = p->ai_next) {
-      if ((sockfd = socket(p->ai_family, p->ai_socktype,
-			   p->ai_protocol)) == -1) {
-	perror("server: socket");
-	continue;
-      }
-      break;
+    if ((sockfd = socket(p->ai_family, p->ai_socktype,
+			 p->ai_protocol)) == -1) {
+      perror("server: socket");
+      continue;
+    }
+    break;
   }
   
   if (p == NULL){
-      fprintf(stderr, "server: failed to bind\n");
-      exit(1);
+    std::cout << "server: failed to bind" << std::endl;
+    exit(1);
   }
 
   client_fd = sockfd;
-
   return client_fd;
 }
 
@@ -123,12 +125,19 @@ int recvCmd(int *id, double *arg)
 
   addr_len = sizeof(struct sockaddr);
   memset(&buf, 0, sizeof(buf));
-  status = recvfrom(client_fd, (void*)buf, sizeof(buf), 0,
+  status = recvfrom(client_fd, (void*)buf, sizeof(buf), MSG_DONTWAIT,
 		    (struct sockaddr*)&their_addr, &addr_len);
 
-  if(status != 12) std::cout << "Warning: Recieved message with unexpected size." << std::endl;
-  if(status == -1) std::cout << "ERROR: Receiving command failed. errno:" << errno << std::endl;
+  if(status == -1){
+    if( errno == EAGAIN || errno == EWOULDBLOCK ){
+      *id = -1;
+      *arg = -1.0;
+    }
+    else
+      std::cout << "ERROR: Receiving command failed. errno:" << errno << std::endl;
+  }
   else{
+    if(status != 12) std::cout << "Warning: Recieved message with unexpected size." << std::endl;
     memcpy(id, &buf[0], sizeof(int));
     memcpy(arg, &buf[sizeof(int)], sizeof(double));
   }
@@ -237,10 +246,11 @@ int main(int _argc, char **_argv)
   gazebo::transport::PublisherPtr velCmdPub = node->Advertise<gazebo::msgs::Pose>("~/create/vel_cmd");
   velCmdPub->WaitForConnection();
 
-  // Start UDP Server and wait for client connecion. BLOCKING
+  // Start UDP Server
   start_server();
   
   // Subscribe to Gazebo topics
+  std::cout << "Starting topic subscribers...";
   gazebo::transport::SubscriberPtr wall_sensor_sub, left_sensor_sub, leftfront_sensor_sub, right_sensor_sub, rightfront_sensor_sub;
   std::string base_path = "~/create/base/";
   wall_sensor_sub       = node->Subscribe( base_path + "wall_sensor/scan", cb_wall);
@@ -248,6 +258,7 @@ int main(int _argc, char **_argv)
   leftfront_sensor_sub  = node->Subscribe( base_path + "leftfront_cliff_sensor/scan", cb_leftfront);
   right_sensor_sub      = node->Subscribe( base_path + "right_cliff_sensor/scan", cb_right);
   rightfront_sensor_sub = node->Subscribe( base_path + "rightfront_cliff_sensor/scan", cb_rightfront);
+  std::cout << "done." << std::endl;
 
   // Messages
   ignition::math::Pose3<double> forward(1,0,0,0,0,0);
@@ -255,31 +266,68 @@ int main(int _argc, char **_argv)
   ignition::math::Pose3<double> turn(0,0,0,0,0,10);
   ignition::math::Pose3<double> reverse(-1,0,0,0,0,0);
   gazebo::msgs::Pose msg;
-  int cmd_id;
+  int cmd_id, round_arg;
+  bool timed_cmd_executing;
   double cmd_arg;
+  char buf[sizeof(int) + sizeof(double)];
+  struct timeval stopTime, curTime;
+
+  timed_cmd_executing = false;
 
   while (true){
     recvCmd(&cmd_id, &cmd_arg);
+    gettimeofday(&curTime, NULL);
     
-    switch(cmd_id){
-    case FORWARD_CMD:
-      gazebo::msgs::Set(&msg, forward);
-      break;
-    case REVERSE_CMD:
-      gazebo::msgs::Set(&msg, reverse);
-      break;
-    case TURN_CMD:
-      gazebo::msgs::Set(&msg, turn);
-      break;
-    case STOP_CMD:
-      gazebo::msgs::Set(&msg, stop);
-      break;
-    default:
-      std::cout << "Unknown command ID: " << cmd_id << std::endl;
-      break;
+    if(cmd_id > 0){
+      switch(cmd_id){
+      case FORWARD_CMD:
+	gazebo::msgs::Set(&msg, forward);
+	break;
+      case REVERSE_CMD:
+	gazebo::msgs::Set(&msg, reverse);
+	break;
+      case TURN_CMD:
+	gazebo::msgs::Set(&msg, turn);
+	break;
+      case STOP_CMD:
+	gazebo::msgs::Set(&msg, stop);
+	break;
+      default:
+	std::cout << "Unknown command ID: " << cmd_id << std::endl;
+	break;
+      }
+      velCmdPub->Publish( msg );
+      
+      round_arg = (int)round( cmd_arg );
+      stopTime = curTime;
+      if(round_arg > 0){
+	stopTime.tv_sec += round_arg / 1000;
+	stopTime.tv_usec += (round_arg % 1000) * 1000;
+	stopTime.tv_sec += stopTime.tv_usec / 1000000;
+	stopTime.tv_usec = (stopTime.tv_usec % 1000000);
+	timed_cmd_executing = true;
+      }
+      else timed_cmd_executing = false;
     }
-    velCmdPub->Publish( msg );
+
+    if( timed_cmd_executing ){
+      if( (stopTime.tv_sec < curTime.tv_sec) ||
+	  ((stopTime.tv_sec == curTime.tv_sec) && (stopTime.tv_usec < curTime.tv_usec)) ){
+	cmd_id = CMD_SUCCESS;
+	cmd_arg = 0.0;
+	memcpy( &buf[0], &cmd_id, sizeof(cmd_id) );
+	memcpy( &buf[sizeof(cmd_id)], &cmd_arg, sizeof(cmd_arg) );
+	cb_send( buf, sizeof(cmd_id) + sizeof(cmd_arg) );
+	gazebo::msgs::Set(&msg, stop);
+	velCmdPub->Publish( msg );
+	timed_cmd_executing = false;
+      }
+    }
+
+    gazebo::common::Time::MSleep(1);
   }
+
+  
 
   // Make sure to shut everything down.
   close(client_fd);

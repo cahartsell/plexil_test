@@ -18,7 +18,6 @@
 #include <string>
 #include <cstdlib>
 #include <cmath>
-
 #include <cstring>
 #include <iostream>
 #include <cstdio>
@@ -41,6 +40,8 @@
 #define FORWARD_CMD 0xB1
 #define REVERSE_CMD 0xB2
 #define TURN_CMD 0xB3
+#define CMD_SUCCESS 0xBE
+#define CMD_FAIL 0xBF
 
 using std::cout;
 using std::cerr;
@@ -101,6 +102,7 @@ bool TestInterface::initialize()
   leftfront_range = 0.0;
   right_range = 0.0;
   rightfront_range = 0.0;
+  last_cmd = NULL;
 
   // UDP Socket and listener thread initilization 
   socket_fd = openSocket();
@@ -144,8 +146,9 @@ void TestInterface::invokeAbort(Command *cmd)
   debugMsg("TestInterface:Command", "Aborting command: " << name);
   bool retval;
 
-  if (name == "drive"){
+  if (name == "drive" || name == "reverse" || name == "turn"){
     sendCmd(STOP_CMD, 0.0);
+    retval = true;
   }
   else{
     debugMsg("TestInterface:Command", "Abort failed. Unknown command: " << name);
@@ -173,8 +176,11 @@ void TestInterface::executeCommand(Command *cmd)
   else if (name == "drive"){
     sendCmd(FORWARD_CMD, 0.0);
   }
-  else if (name == "reverseAndTurn"){
-    sendCmd(REVERSE_CMD, 0.0);
+  else if (name == "reverse"){
+    sendCmd(REVERSE_CMD, 500.0);
+  }
+  else if (name == "turn"){
+    sendCmd(TURN_CMD, 400.0);
   }
   else if (name == "dock"){
     ////////////// Need to handle command
@@ -184,6 +190,7 @@ void TestInterface::executeCommand(Command *cmd)
   }
 
   // PLEXIL pends on command acknowledgement (does not block - concurrent portions can continue)
+  last_cmd = cmd;
   m_execInterface.handleCommandAck(cmd, COMMAND_SENT_TO_SYSTEM);
 }
 
@@ -318,37 +325,47 @@ void* TestInterface::listen(void *arg)
     memcpy( &id, &buffer[0], size_id );
     memcpy( &range, &buffer[size_id], size_range );
 
-    // check ID and set appropriate name
-    switch(id){
-    case WALL_ID:
-      name = "wall_sensor";
-      context->wall_range = range;
-      break;
-    case LEFT_ID:
-      name = "left_sensor";
-      context->left_range = range;
-      break;
-    case LEFTFRONT_ID:
-      name = "leftfront_sensor";
-      context->leftfront_range = range;
-      break;
-    case RIGHT_ID:
-      name = "right_sensor";
-      context->right_range = range;
-      break;
-    case RIGHTFRONT_ID:
-      name = "rightfront_sensor";
-      context->rightfront_range = range;
-      break;
-    default:
-      debugMsg("TestInterface:Socket", "Recieved unknown sensor ID: " << id);
-      break;
+    if( id == CMD_SUCCESS ){
+      debugMsg("TestInterface:Socket", "Received cmd id: " << id << " Sending COMMAND_SUCCESS");
+      context->m_execInterface.handleCommandAck(context->last_cmd, COMMAND_SUCCESS);
     }
-
-    // Propigate change to PLEXIL
-    retval = (Value)range;
-    st = createState(name, EmptyArgs);
-    context->propagateValueChange(st, vector<Value> (1, retval));
+    else if( id == CMD_FAIL ){
+      debugMsg("TestInterface:Socket", "Received cmd id: " << id << " Sending COMMAND_FAILED");
+      context->m_execInterface.handleCommandAck(context->last_cmd, COMMAND_FAILED);
+    }
+    else{
+      // check ID and set appropriate name
+      switch(id){
+      case WALL_ID:
+	name = "wall_sensor";
+	context->wall_range = range;
+	break;
+      case LEFT_ID:
+	name = "left_sensor";
+	context->left_range = range;
+	break;
+      case LEFTFRONT_ID:
+	name = "leftfront_sensor";
+	context->leftfront_range = range;
+	break;
+      case RIGHT_ID:
+	name = "right_sensor";
+	context->right_range = range;
+	break;
+      case RIGHTFRONT_ID:
+	name = "rightfront_sensor";
+	context->rightfront_range = range;
+	break;
+      default:
+	debugMsg("TestInterface:Socket", "Recieved unknown sensor ID: " << id);
+	break;
+      }
+      
+      // Propigate change to PLEXIL
+      retval = (Value)range;
+      st = createState(name, EmptyArgs);
+      context->propagateValueChange(st, vector<Value> (1, retval));
+    }
   }
 
   return NULL;
