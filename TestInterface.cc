@@ -166,6 +166,7 @@ void TestInterface::executeCommand(Command *cmd)
   std::vector<Value> args;
   args = cmd->getArgValues();
 
+  double d;
   string s;
   State st;
   
@@ -174,13 +175,16 @@ void TestInterface::executeCommand(Command *cmd)
     debugMsg("TestInterface:Command", s);
   }
   else if (name == "drive"){
-    sendCmd(FORWARD_CMD, 0.0);
+    args[0].getValue(d);
+    sendCmd(FORWARD_CMD, d);
   }
   else if (name == "reverse"){
-    sendCmd(REVERSE_CMD, 500.0);
+    args[0].getValue(d);
+    sendCmd(REVERSE_CMD, d);
   }
   else if (name == "turn"){
-    sendCmd(TURN_CMD, 400.0);
+    args[0].getValue(d);
+    sendCmd(TURN_CMD, d);
   }
   else if (name == "dock"){
     ////////////// Need to handle command
@@ -247,7 +251,7 @@ void TestInterface::propagateValueChange(const State &state, const vector<Value>
 int TestInterface::openSocket()
 {
   // Taken from "Beej's Networking Guide"
-  int sockfd;  
+  int sockfd, optval;  
   struct addrinfo hints, *p;
   int rv, init_msg;
   char s[INET6_ADDRSTRLEN];
@@ -256,6 +260,7 @@ int TestInterface::openSocket()
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = AI_PASSIVE;
+  optval = 1;
 
   if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -269,6 +274,7 @@ int TestInterface::openSocket()
       perror("client: socket");
       continue;
     }
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
     if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
       close(sockfd);
       perror("client: bind");

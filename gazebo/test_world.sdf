@@ -1516,6 +1516,7 @@
               <resolution>0.1</resolution>
             </range>
           </ray>
+	  <visualize>true</visualize>
         </sensor>
         <sensor name='leftfront_cliff_sensor' type='ray'>
           <pose frame=''>0.15 0.04 0.027 0 1.57079 0</pose>
@@ -1539,6 +1540,7 @@
               <resolution>0.1</resolution>
             </range>
           </ray>
+	  <visualize>true</visualize>
         </sensor>
         <sensor name='right_cliff_sensor' type='ray'>
           <pose frame=''>0.07 -0.14 0.027 0 1.57079 0</pose>
@@ -1562,6 +1564,7 @@
               <resolution>0.1</resolution>
             </range>
           </ray>
+	  <visualize>true</visualize>
         </sensor>
         <sensor name='rightfront_cliff_sensor' type='ray'>
           <pose frame=''>0.15 -0.04 0.027 0 1.57079 0</pose>
@@ -1585,16 +1588,17 @@
               <resolution>0.1</resolution>
             </range>
           </ray>
+	  <visualize>true</visualize>
         </sensor>
         <sensor name='wall_sensor' type='ray'>
-          <pose frame=''>0.09 -0.12 0.059 0 0 -1</pose>
+          <pose frame=''>0.16 0 0.027 0 0 0</pose>
           <ray>
             <scan>
               <horizontal>
                 <samples>1</samples>
                 <resolution>1</resolution>
                 <min_angle>0</min_angle>
-                <max_angle>0</max_angle>
+                <max_angle></max_angle>
               </horizontal>
               <vertical>
                 <samples>1</samples>
@@ -1603,11 +1607,12 @@
               </vertical>
             </scan>
             <range>
-              <min>0.016</min>
+              <min>0.01</min>
               <max>0.04</max>
               <resolution>0.1</resolution>
             </range>
           </ray>
+	  <visualize>true</visualize>
         </sensor>
         <self_collide>0</self_collide>
         <kinematic>0</kinematic>

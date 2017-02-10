@@ -1,7 +1,7 @@
 Command debugMsg( String msg );
-Command drive();
-Command reverse();
-Command turn();
+Command drive( Real ms_duration );
+Command reverse( Real ms_duration );
+Command turn( Real ms_duration );
 Command dock();
 
 Real Lookup wall_sensor;
@@ -29,26 +29,26 @@ Main: Concurrence
 		       Lookup(right_sensor) < SENSOR_TOL &&
 		       Lookup(rightfront_sensor) < SENSOR_TOL;
     EndCondition Lookup(wall_sensor) < SENSOR_TOL;
-    drive();
+    drive(0.0);
   }
 
   TiltSensor:
   {
     RepeatCondition drive_done == false;
-    StartCondition Lookup(left_sensor) > SENSOR_TOL &&
-    		   Lookup(leftfront_sensor) > SENSOR_TOL &&
-		   Lookup(right_sensor) > SENSOR_TOL &&
+    StartCondition Lookup(left_sensor) > SENSOR_TOL ||
+    		   Lookup(leftfront_sensor) > SENSOR_TOL ||
+		   Lookup(right_sensor) > SENSOR_TOL ||
 		   Lookup(rightfront_sensor) > SENSOR_TOL;
     ready_to_drive = false;
     Reverse:
     {
       EndCondition Reverse.command_handle == COMMAND_SUCCESS;
-      reverse();
+      reverse(500.0);
     }
     Turn:
     {
       EndCondition Turn.command_handle == COMMAND_SUCCESS;
-      turn();
+      turn(700.0);
     }
     ready_to_drive = true;
   }
@@ -65,12 +65,12 @@ Main: Concurrence
     Reverse:
     {
       EndCondition Reverse.command_handle == COMMAND_SUCCESS;
-      reverse();
+      reverse(500.0);
     }
     Turn:
     {
       EndCondition Turn.command_handle == COMMAND_SUCCESS;
-      turn();
+      turn(700.0);
     }
     ready_to_drive = true;
   }
